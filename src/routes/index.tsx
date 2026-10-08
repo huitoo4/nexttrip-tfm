@@ -1,9 +1,75 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  STYLES, COMPANY, PACES, INTERESTS, ORIGINS,
+  STYLES, COMPANY, PACES, INTERESTS,
   recommend, tierFor, eur, itineraryText, type Answers, type Trip,
 } from "@/lib/trips";
+import { searchCities, resolveOrigin, cityLabel } from "@/lib/geo";
+
+function OriginInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [q, setQ] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  useEffect(() => setQ(value), [value]);
+  const results = open ? searchCities(q) : [];
+  const r = resolveOrigin(value);
+  const pick = (label: string) => { onChange(label); setQ(label); setOpen(false); };
+  return (
+    <div className="relative mt-4">
+      <label className="block">
+        <span className="sr-only">Escribe tu ciudad de origen</span>
+        <input
+          type="text"
+          role="combobox"
+          aria-expanded={results.length > 0}
+          aria-autocomplete="list"
+          value={q}
+          placeholder="Escribe cualquier ciudad del mundo…"
+          onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); onChange(e.target.value); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(e) => {
+            if (!results.length) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => (h + 1) % results.length); }
+            if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => (h - 1 + results.length) % results.length); }
+            if (e.key === "Enter") { e.preventDefault(); pick(cityLabel(results[hi])); }
+          }}
+          className="w-full rounded-2xl border border-input bg-card/70 px-4 py-3 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-ring"
+        />
+      </label>
+      {results.length > 0 && (
+        <ul role="listbox" className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+          {results.map((c, i) => {
+            const h = resolveOrigin(cityLabel(c));
+            return (
+              <li key={cityLabel(c)} role="option" aria-selected={i === hi}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); pick(cityLabel(c)); }}
+                  onMouseEnter={() => setHi(i)}
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-[13px] ${i === hi ? "bg-primary/10" : ""}`}
+                >
+                  <span><span className="font-bold">{c.name}</span> <span className="text-muted-foreground">· {c.country}</span></span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">✈ {h.hub.code}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {r.city && (
+        <p className="mt-2 rounded-xl bg-accent/10 px-3 py-2 text-[12px] font-semibold text-foreground/75">
+          {r.rerouted
+            ? <>Origen: {r.city.name} · Salida recomendada desde aeropuerto de {r.hub.city} ({r.hub.code}, a {r.km} km)</>
+            : <>Salida desde {r.hub.name} ({r.hub.code})</>}
+        </p>
+      )}
+      {!r.city && value.trim().length > 2 && (
+        <p className="mt-2 text-[12px] text-muted-foreground">No reconocemos esta ciudad; calcularemos desde {r.hub.city} ({r.hub.code}).</p>
+      )}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -134,7 +200,7 @@ function Index() {
               <span className="size-2 rounded-full bg-accent" />origen del viaje
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {ORIGINS.slice(0, 4).map((o) => (
+              {["Madrid", "Barcelona", "Bilbao", "Sevilla"].map((o) => (
                 <button
                   key={o}
                   onClick={() => setA({ ...a, origin: o })}
@@ -146,20 +212,7 @@ function Index() {
                 </button>
               ))}
             </div>
-            <label className="mt-4 block">
-              <span className="sr-only">Escribe tu ciudad de origen</span>
-              <input
-                type="text"
-                list="origin-suggestions"
-                value={a.origin}
-                placeholder="Escribe cualquier ciudad del mundo…"
-                onChange={(e) => setA({ ...a, origin: e.target.value })}
-                className="w-full rounded-2xl border border-input bg-card/70 px-4 py-3 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-ring"
-              />
-              <datalist id="origin-suggestions">
-                {ORIGINS.map((o) => <option key={o} value={o} />)}
-              </datalist>
-            </label>
+            <OriginInput value={a.origin} onChange={(origin) => setA({ ...a, origin })} />
             <div className="mt-4 rounded-2xl bg-card/60 p-4">
               <div className="flex items-baseline justify-between"><span className="text-[12px] font-semibold text-muted-foreground">Ritmo</span><span className="text-[13px] font-bold">{a.pace}</span></div>
               <div className="mt-2 flex gap-1.5">
