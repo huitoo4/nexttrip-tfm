@@ -4,6 +4,7 @@ import lisboa from "@/assets/lisboa.jpg";
 import kioto from "@/assets/kioto.jpg";
 import marrakech from "@/assets/marrakech.jpg";
 import maldivas from "@/assets/maldivas.jpg";
+export { resolveOrigin } from "./geo";
 
 export type Answers = {
   style: string;
@@ -18,26 +19,12 @@ export const STYLES = ["Aventura", "Cultural", "Relax", "Gastronómico"];
 export const COMPANY = ["Solo", "Pareja", "Amigos", "Familia"];
 export const PACES = ["Tranquilo", "Equilibrado", "Intenso"];
 export const INTERESTS = ["Playa", "Montaña", "Arte", "Gastronomía", "Historia", "Naturaleza", "Vida nocturna", "Fotografía"];
-type Zone = "eu" | "af" | "me" | "as" | "na" | "la" | "oc";
+import { resolveOrigin, CITIES, cityLabel, type Zone } from "./geo";
 
-const ORIGIN_ZONES: Record<string, Zone> = {
-  Madrid: "eu", Barcelona: "eu", Valencia: "eu", Sevilla: "eu", Bilbao: "eu", Málaga: "eu", Zaragoza: "eu", "Palma de Mallorca": "eu", "Las Palmas": "eu", Lisboa: "eu", Oporto: "eu", París: "eu", Londres: "eu", Roma: "eu", Milán: "eu", Berlín: "eu", Ámsterdam: "eu", Bruselas: "eu", Zúrich: "eu", Viena: "eu", Dublín: "eu", Estocolmo: "eu",
-  Marrakech: "af", Casablanca: "af", "El Cairo": "af", "Ciudad del Cabo": "af", Nairobi: "af",
-  Dubái: "me", Estambul: "me", Doha: "me",
-  Tokio: "as", Pekín: "as", Shanghái: "as", Seúl: "as", Bangkok: "as", Singapur: "as", "Hong Kong": "as", Delhi: "as", Bombay: "as",
-  "Nueva York": "na", "Los Ángeles": "na", Miami: "na", Chicago: "na", Toronto: "na", Montreal: "na",
-  "Ciudad de México": "la", Guadalajara: "la", Monterrey: "la", Bogotá: "la", Medellín: "la", Lima: "la", Santiago: "la", "Buenos Aires": "la", "São Paulo": "la", "Río de Janeiro": "la", Caracas: "la", Quito: "la", Montevideo: "la", "San José": "la", "La Habana": "la", "Santo Domingo": "la",
-  Sídney: "oc", Melbourne: "oc", Auckland: "oc",
-};
-
-export const ORIGINS = Object.keys(ORIGIN_ZONES);
-
-const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+export const ORIGINS = CITIES.map(cityLabel);
 
 function zoneOf(origin: string): Zone {
-  const n = norm(origin);
-  const hit = Object.entries(ORIGIN_ZONES).find(([c]) => norm(c) === n || (n.length > 2 && norm(c).startsWith(n)));
-  return hit ? hit[1] : "eu";
+  return resolveOrigin(origin).hub.zone;
 }
 
 // Distancia relativa entre zonas (0 = misma zona, 1 = muy lejos)
