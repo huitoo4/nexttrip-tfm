@@ -325,7 +325,7 @@ function Index() {
             <div className="mt-14 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">3 itinerarios para ti</h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} (✈ {resolveOrigin(a.origin).hub.code}) · {a.style} · {a.company} · {a.pace}</p>
               </div>
               <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
                 Imprimir / PDF
