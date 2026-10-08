@@ -108,7 +108,10 @@ function Index() {
     style: "Cultural", company: "Pareja", pace: "Equilibrado", interests: ["Gastronomía"], origin: "Madrid", budget: 2400,
   });
   const [trips, setTrips] = useState<Trip[] | null>(null);
-  const [saved, setSaved] = useState<string[]>([]);
+  const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
+  const saved = savedTrips.map((x) => x.id);
+  const [showSaved, setShowSaved] = useState(false);
+  const [exporting, setExporting] = useState<{ trip: Trip; answers: Answers } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const onboardRef = useRef<HTMLDivElement>(null);
@@ -116,7 +119,7 @@ function Index() {
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem("nexttrip-saved") || "[]");
-      setSaved(s.map((x: { id: string }) => x.id));
+      setSavedTrips(s);
     } catch { /* ignore */ }
   }, []);
 
@@ -130,24 +133,18 @@ function Index() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
-  const save = (t: Trip) => {
-    const list = JSON.parse(localStorage.getItem("nexttrip-saved") || "[]").filter((x: { id: string }) => x.id !== t.id);
-    list.push({ ...t, answers: a, savedAt: new Date().toISOString() });
+  const persist = (list: SavedTrip[]) => {
     localStorage.setItem("nexttrip-saved", JSON.stringify(list));
-    setSaved(list.map((x: { id: string }) => x.id));
-    flash(`${t.name} guardado en tus viajes`);
+    setSavedTrips(list);
   };
 
-  const exportTrip = (t: Trip) => {
-    const blob = new Blob([itineraryText(t, a)], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `nexttrip-${t.id}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-    flash("Itinerario descargado");
+  const save = (t: Trip) => {
+    if (saved.includes(t.id)) { setShowSaved(true); return; }
+    persist([...savedTrips, { ...t, answers: a, savedAt: new Date().toISOString() }]);
+    flash(`${t.name} guardado en «Mis viajes»`);
   };
+
+  const removeSaved = (id: string) => persist(savedTrips.filter((x) => x.id !== id));
 
   const toggleInterest = (i: string) =>
     setA((p) => ({ ...p, interests: p.interests.includes(i) ? p.interests.filter((x) => x !== i) : [...p.interests, i] }));
@@ -168,11 +165,13 @@ function Index() {
               <p className="text-[11px] font-medium text-muted-foreground">viajes a tu medida</p>
             </div>
           </div>
-          {saved.length > 0 && (
-            <span className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-foreground/80">
-              {saved.length} guardado{saved.length > 1 ? "s" : ""}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowSaved(true)}
+            className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-foreground/80 hover:text-foreground"
+          >
+            ♥ Mis viajes{saved.length > 0 ? ` (${saved.length})` : ""}
+          </button>
         </header>
 
         {/* Hero + origen */}
@@ -366,7 +365,7 @@ function Index() {
                         <button onClick={() => save(t)} className="glass-soft rounded-full px-4 py-1.5 text-[11px] font-bold text-foreground/70">
                           {saved.includes(t.id) ? "Guardado ✓" : "Guardar"}
                         </button>
-                        <button onClick={() => exportTrip(t)} className="rounded-full bg-primary px-4 py-1.5 text-[11px] font-bold text-primary-foreground">
+                        <button onClick={() => setExporting({ trip: t, answers: a })} className="rounded-full bg-primary px-4 py-1.5 text-[11px] font-bold text-primary-foreground">
                           Exportar
                         </button>
                       </div>
@@ -379,12 +378,106 @@ function Index() {
         )}
       </div>
 
+      {showSaved && (
+        <SavedPanel
+          trips={savedTrips}
+          onClose={() => setShowSaved(false)}
+          onRemove={removeSaved}
+          onExport={(t) => setExporting({ trip: t, answers: t.answers })}
+        />
+      )}
+      {exporting && <ExportDialog trip={exporting.trip} answers={exporting.answers} onClose={() => setExporting(null)} onDone={flash} />}
+
       {notice && (
         <div className="no-print glass animate-rise fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full px-6 py-3 text-[13px] font-bold">
           {notice}
         </div>
       )}
     </div>
+  );
+}
+
+type SavedTrip = Trip & { answers: Answers; savedAt: string };
+
+function downloadText(name: string, text: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onClose]);
+  return (
+    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-label={title} className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[24px] bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-2xl font-semibold">{title}</h3>
+          <button type="button" aria-label="Cerrar" onClick={onClose} className="rounded-full px-3 py-1 text-lg text-muted-foreground hover:bg-muted">×</button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ExportDialog({ trip, answers, onClose, onDone }: { trip: Trip; answers: Answers; onClose: () => void; onDone: (m: string) => void }) {
+  const text = itineraryText(trip, answers);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); onDone("Itinerario copiado al portapapeles"); }
+    catch { onDone("No se pudo copiar; selecciona el texto manualmente"); }
+  };
+  const print = () => {
+    const w = window.open("", "_blank");
+    if (!w) { onDone("Tu navegador bloqueó la ventana de impresión"); return; }
+    w.document.write(`<title>NextTrip · ${trip.name}</title><pre style="font:14px/1.6 system-ui;white-space:pre-wrap;padding:32px">${text.replace(/</g, "&lt;")}</pre>`);
+    w.document.close(); w.focus(); w.print();
+  };
+  return (
+    <Modal title={`Exportar · ${trip.name}`} onClose={onClose}>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-2xl bg-muted p-4 text-[12px] leading-relaxed">{text}</pre>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => { downloadText(`nexttrip-${trip.id}.txt`, text); onDone("Descarga iniciada"); }} className="rounded-full bg-primary px-5 py-2 text-[13px] font-bold text-primary-foreground">Descargar .txt</button>
+        <button type="button" onClick={copy} className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold">Copiar texto</button>
+        <button type="button" onClick={print} className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold">Imprimir / PDF</button>
+      </div>
+      <p className="mt-3 text-[11px] text-muted-foreground">Si la descarga no arranca en la vista previa, prueba «Copiar texto» o abre la app publicada.</p>
+    </Modal>
+  );
+}
+
+function SavedPanel({ trips, onClose, onRemove, onExport }: { trips: SavedTrip[]; onClose: () => void; onRemove: (id: string) => void; onExport: (t: SavedTrip) => void }) {
+  return (
+    <Modal title="Mis viajes" onClose={onClose}>
+      {trips.length === 0 ? (
+        <p className="text-[14px] text-muted-foreground">Aún no has guardado ningún viaje. Pulsa «Guardar» en una de tus recomendaciones.</p>
+      ) : (
+        <ul className="space-y-3">
+          {trips.map((t) => (
+            <li key={t.id} className="flex gap-3 rounded-2xl border border-border p-3">
+              <img src={t.img} alt={t.name} className="size-16 rounded-xl object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-bold">{t.name}</p>
+                <p className="text-[12px] text-muted-foreground">{t.days} días · desde {t.answers.origin} · {eur(t.total)}</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => onExport(t)} className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground">Exportar</button>
+                  <button type="button" onClick={() => onRemove(t.id)} className="glass-soft rounded-full px-3 py-1 text-[11px] font-bold text-foreground/70">Eliminar</button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   );
 }
 
