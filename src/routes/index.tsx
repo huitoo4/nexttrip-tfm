@@ -281,18 +281,28 @@ function Index() {
                     <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: tier.color }}>{tier.label}</p>
                   </div>
                 </div>
+                <div className="mt-8">
                 <input
                   type="range" min={100} max={10000} step={50} value={a.budget}
                   onChange={(e) => setA({ ...a, budget: Number(e.target.value) })}
                   aria-label="Presupuesto"
-                  className="range-budget mt-8"
+                  className="range-budget block"
                   style={{
                     ["--tier" as string]: tier.color,
                     background: `linear-gradient(90deg, ${tier.color} ${pct}%, color-mix(in oklab, ${tier.color} 15%, transparent) ${pct}%)`,
                   }}
                 />
-                <div className="mt-4 flex justify-between text-[11px] font-semibold text-muted-foreground">
-                  <span>100€</span><span>1.000€</span><span>3.000€</span><span>6.000€</span><span>10.000€</span>
+                <div className="budget-scale relative mx-[0.8rem] mt-4 h-10 text-[11px] font-semibold text-muted-foreground">
+                  {[100, 1000, 3000, 6000, 10000].map((value, i) => (
+                    <span
+                      key={value}
+                      className={`budget-scale-label absolute whitespace-nowrap ${i === 0 ? "translate-x-0" : i === 4 ? "-translate-x-full" : "-translate-x-1/2"}`}
+                      style={{ left: `${((value - 100) / 9900) * 100}%` }}
+                    >
+                      {value === 100 ? "100€" : `${(value / 1000).toFixed(0)}.000€`}
+                    </span>
+                  ))}
+                </div>
                 </div>
               </div>
             )}
