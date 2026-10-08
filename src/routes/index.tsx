@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   STYLES, COMPANY, PACES, INTERESTS,
-  recommend, tierFor, eur, itineraryText, type Answers, type Trip,
+  recommend, tierFor, eur, itineraryText, breakdown, type Answers, type Trip, type CostItem,
 } from "@/lib/trips";
 import { searchCities, resolveOrigin, cityLabel } from "@/lib/geo";
 
@@ -430,28 +430,98 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+function CostSection({ label, total, items, dot, defaultOpen }: { label: string; total: number; items: CostItem[]; dot: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="border-b border-dashed border-border last:border-b-0">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 py-3 text-left">
+        <span className={`size-2.5 rounded-sm ${dot}`} />
+        <span className="flex-1 text-[12px] font-bold uppercase tracking-[0.14em]">{label}</span>
+        <span className="font-mono text-[15px] font-bold">{eur(total)}</span>
+        <span className={`font-mono text-[12px] text-muted-foreground transition-transform duration-200 ${open ? "rotate-90" : ""}`}>▸</span>
+      </button>
+      <div className={`grid transition-all duration-300 ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+        <ul className="overflow-hidden">
+          {items.map((i) => (
+            <li key={i.label} className="flex items-baseline gap-2 pb-2 pl-5 text-[12.5px]">
+              <span className="text-foreground/75">{i.label}</span>
+              <span className="mx-1 flex-1 border-b border-dotted border-foreground/20" />
+              <span className="font-mono font-semibold">{eur(i.amount)}</span>
+            </li>
+          ))}
+          <li className="h-1" />
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function ExportDialog({ trip, answers, onClose, onDone }: { trip: Trip; answers: Answers; onClose: () => void; onDone: (m: string) => void }) {
   const text = itineraryText(trip, answers);
+  const b = breakdown(trip, answers);
+  const hub = resolveOrigin(answers.origin).hub;
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onClose]);
   const copy = async () => {
     try { await navigator.clipboard.writeText(text); onDone("Itinerario copiado al portapapeles"); }
-    catch { onDone("No se pudo copiar; selecciona el texto manualmente"); }
+    catch { onDone("No se pudo copiar el texto"); }
   };
   const print = () => {
     const w = window.open("", "_blank");
     if (!w) { onDone("Tu navegador bloqueó la ventana de impresión"); return; }
-    w.document.write(`<title>NextTrip · ${trip.name}</title><pre style="font:14px/1.6 system-ui;white-space:pre-wrap;padding:32px">${text.replace(/</g, "&lt;")}</pre>`);
+    w.document.write(`<title>NextTrip · ${trip.name}</title><pre style="font:14px/1.6 ui-monospace,monospace;white-space:pre-wrap;padding:32px">${text.replace(/</g, "&lt;")}</pre>`);
     w.document.close(); w.focus(); w.print();
   };
   return (
-    <Modal title={`Exportar · ${trip.name}`} onClose={onClose}>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-2xl bg-muted p-4 text-[12px] leading-relaxed">{text}</pre>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={() => { downloadText(`nexttrip-${trip.id}.txt`, text); onDone("Descarga iniciada"); }} className="rounded-full bg-primary px-5 py-2 text-[13px] font-bold text-primary-foreground">Descargar .txt</button>
-        <button type="button" onClick={copy} className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold">Copiar texto</button>
-        <button type="button" onClick={print} className="glass-soft rounded-full px-5 py-2 text-[13px] font-bold">Imprimir / PDF</button>
+    <div className="no-print fixed inset-0 z-50 grid place-items-center bg-foreground/50 p-4 backdrop-blur-md" onClick={onClose}>
+      <div role="dialog" aria-label={`Exportar ${trip.name}`} onClick={(e) => e.stopPropagation()}
+        className="animate-rise max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[20px] bg-card font-ticket shadow-2xl">
+        <div className="relative bg-primary px-6 pb-6 pt-5 text-primary-foreground">
+          <div className="flex items-center justify-between font-mono text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">
+            <span>NextTrip · Boarding pass</span>
+            <button type="button" aria-label="Cerrar" onClick={onClose} className="rounded-full px-2 text-base opacity-90 hover:opacity-100">✕</button>
+          </div>
+          <div className="mt-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="font-mono text-3xl font-bold">{hub.code}</p>
+              <p className="text-[11px] opacity-80">{answers.origin.split(",")[0]}</p>
+            </div>
+            <span className="pb-3 font-mono text-sm opacity-70">— ✈ —</span>
+            <div className="text-right">
+              <p className="text-xl font-bold leading-tight">{trip.name}</p>
+              <p className="text-[11px] opacity-80">{trip.region}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-wider">
+            <div><p className="opacity-60">Días</p><p className="text-[13px] font-bold">{trip.days}</p></div>
+            <div><p className="opacity-60">Viajeros</p><p className="text-[13px] font-bold">{answers.company}</p></div>
+            <div><p className="opacity-60">Ritmo</p><p className="text-[13px] font-bold">{answers.pace}</p></div>
+          </div>
+        </div>
+        <div className="relative h-0 border-t-2 border-dashed border-border">
+          <span className="absolute -left-3 -top-3 size-6 rounded-full bg-foreground/50" />
+          <span className="absolute -right-3 -top-3 size-6 rounded-full bg-foreground/50" />
+        </div>
+        <div className="px-6 pt-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Desglose · toca para ver detalle</p>
+          <CostSection label="Transporte" total={trip.transport} items={b.transport} dot="bg-primary" defaultOpen />
+          <CostSection label="Estancia" total={trip.stay} items={b.stay} dot="bg-accent" />
+          <CostSection label="Actividades" total={trip.activities} items={b.activities} dot="bg-tier-low" />
+          <div className="mt-2 flex items-center justify-between rounded-xl bg-muted px-4 py-3">
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em]">Total</span>
+            <span className="font-mono text-xl font-bold">{eur(trip.total)}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 px-6 pb-6 pt-4">
+          <button type="button" onClick={() => { downloadText(`nexttrip-${trip.id}.txt`, text); onDone("Descarga iniciada"); }} className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-bold text-primary-foreground">Descargar .txt</button>
+          <button type="button" onClick={copy} className="rounded-xl border border-border px-4 py-2.5 text-[13px] font-bold hover:bg-muted">Copiar</button>
+          <button type="button" onClick={print} className="rounded-xl border border-border px-4 py-2.5 text-[13px] font-bold hover:bg-muted">PDF</button>
+        </div>
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">Si la descarga no arranca en la vista previa, prueba «Copiar texto» o abre la app publicada.</p>
-    </Modal>
+    </div>
   );
 }
 

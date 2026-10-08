@@ -164,12 +164,54 @@ export function itineraryText(t: Trip, a: Answers) {
     `Estilo: ${a.style} · Con: ${a.company} · Ritmo: ${a.pace}`,
     `Intereses: ${a.interests.join(", ") || "—"}`,
     ``,
-    `Transporte: ${eur(t.transport)}`,
-    `Estancia: ${eur(t.stay)}`,
-    `Actividades: ${eur(t.activities)}`,
+    ...(() => {
+      const b = breakdown(t, a);
+      const sec = (n: string, v: number, items: CostItem[]) => [`${n}: ${eur(v)}`, ...items.map((i) => `   · ${i.label}: ${eur(i.amount)}`)];
+      return [...sec("Transporte", t.transport, b.transport), ...sec("Estancia", t.stay, b.stay), ...sec("Actividades", t.activities, b.activities)];
+    })(),
     `TOTAL: ${eur(t.total)}`,
     ``,
     `Plan destacado:`,
     ...t.plan.map((p, i) => `  ${i + 1}. ${p}`),
   ].join("\n");
+}
+
+export type CostItem = { label: string; amount: number };
+export type Breakdown = { transport: CostItem[]; stay: CostItem[]; activities: CostItem[] };
+
+// Reparte una cantidad en partidas según pesos, cuadrando el total exacto
+function split(total: number, parts: [string, number][]): CostItem[] {
+  const w = parts.reduce((s, [, x]) => s + x, 0);
+  const items = parts.map(([label, x]) => ({ label, amount: r10((total * x) / w) }));
+  const diff = total - items.reduce((s, i) => s + i.amount, 0);
+  if (items[0]) items[0].amount += diff;
+  return items.filter((i) => i.amount > 0);
+}
+
+export function breakdown(t: Trip, a: Answers): Breakdown {
+  const nights = Math.max(1, t.days - 1);
+  const week = t.days >= 6 ? "una semana" : `${t.days} días`;
+  const intense = a.pace === "Intenso", calm = a.pace === "Tranquilo";
+  const lux = t.tier.key === "lux" || t.tier.key === "high";
+  const cheap = t.tier.key === "low";
+  const transport = split(t.transport, [
+    ["Avión ida y vuelta", 60],
+    ["Traslados aeropuerto", 8],
+    [cheap ? "Bus y metro local" : "Trenes y transporte local", 16],
+    [intense ? `Alquiler de coche ${week}` : "Taxis y excursiones en grupo", intense ? 24 : 12],
+  ]);
+  const stayLabel = cheap ? "Hostel / guesthouse" : lux ? "Hotel boutique 4-5★" : "Hotel 3★ céntrico";
+  const stay = split(t.stay, [
+    [`${stayLabel} · ${nights} noches`, 62],
+    [cheap ? "Comidas en mercados y street food" : "Comidas y cenas", 30],
+    ["Tasas turísticas y seguro de viaje", 8],
+  ]);
+  const p = t.plan;
+  const activities = split(t.activities, [
+    [p[0] ?? "Actividad principal", 34],
+    [p[1] ?? "Excursión", 28],
+    [p[2] ?? "Experiencia", calm ? 18 : 24],
+    ["Entradas a museos y extras", calm ? 10 : 14],
+  ]);
+  return { transport, stay, activities };
 }
