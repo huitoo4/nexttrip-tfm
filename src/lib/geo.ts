@@ -122,9 +122,9 @@ export function resolveOrigin(input: string): ResolvedOrigin {
     CITIES.find((c) => norm(c.name) === namePart) ?? null;
   if (!city) {
     const direct = HUBS.find((h) => norm(h.city) === namePart);
-    return { input, city: null, hub: direct ?? HUBS[0], km: 0, rerouted: false };
+    return { input, city: null, hub: direct ?? HUBS[0]!, km: 0, rerouted: false };
   }
-  let best = HUBS[0], bestKm = Infinity;
+  let best: Hub = HUBS[0]!, bestKm = Infinity;
   for (const h of HUBS) {
     const d = km(city.lat, city.lon, h.lat, h.lon);
     if (d < bestKm) { best = h; bestKm = d; }

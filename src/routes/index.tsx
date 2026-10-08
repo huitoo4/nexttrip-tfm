@@ -32,7 +32,7 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
             if (!results.length) return;
             if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => (h + 1) % results.length); }
             if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => (h - 1 + results.length) % results.length); }
-            if (e.key === "Enter") { e.preventDefault(); pick(cityLabel(results[hi])); }
+            if (e.key === "Enter") { e.preventDefault(); const c = results[hi]; if (c) pick(cityLabel(c)); }
           }}
           className="w-full rounded-2xl border border-input bg-card/70 px-4 py-3 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-ring"
         />
