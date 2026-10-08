@@ -147,14 +147,18 @@ function Index() {
               ))}
             </div>
             <label className="mt-4 block">
-              <span className="sr-only">Otra ciudad de origen</span>
-              <select
+              <span className="sr-only">Escribe tu ciudad de origen</span>
+              <input
+                type="text"
+                list="origin-suggestions"
                 value={a.origin}
+                placeholder="Escribe cualquier ciudad del mundo…"
                 onChange={(e) => setA({ ...a, origin: e.target.value })}
                 className="w-full rounded-2xl border border-input bg-card/70 px-4 py-3 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-ring"
-              >
-                {ORIGINS.map((o) => <option key={o}>{o}</option>)}
-              </select>
+              />
+              <datalist id="origin-suggestions">
+                {ORIGINS.map((o) => <option key={o} value={o} />)}
+              </datalist>
             </label>
             <div className="mt-4 rounded-2xl bg-card/60 p-4">
               <div className="flex items-baseline justify-between"><span className="text-[12px] font-semibold text-muted-foreground">Ritmo</span><span className="text-[13px] font-bold">{a.pace}</span></div>
