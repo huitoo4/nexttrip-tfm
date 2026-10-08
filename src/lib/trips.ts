@@ -164,9 +164,11 @@ export function itineraryText(t: Trip, a: Answers) {
     `Estilo: ${a.style} · Con: ${a.company} · Ritmo: ${a.pace}`,
     `Intereses: ${a.interests.join(", ") || "—"}`,
     ``,
-    `Transporte: ${eur(t.transport)}`,
-    `Estancia: ${eur(t.stay)}`,
-    `Actividades: ${eur(t.activities)}`,
+    ...(() => {
+      const b = breakdown(t, a);
+      const sec = (n: string, v: number, items: CostItem[]) => [`${n}: ${eur(v)}`, ...items.map((i) => `   · ${i.label}: ${eur(i.amount)}`)];
+      return [...sec("Transporte", t.transport, b.transport), ...sec("Estancia", t.stay, b.stay), ...sec("Actividades", t.activities, b.activities)];
+    })(),
     `TOTAL: ${eur(t.total)}`,
     ``,
     `Plan destacado:`,
