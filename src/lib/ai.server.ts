@@ -24,7 +24,7 @@ const schema = z.object({
 });
 
 export async function generateSuggestions(a: Answers): Promise<AiSuggestion[]> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("Falta la configuración de IA");
   const o = resolveOrigin(a.origin);
   const people = a.company === "Solo" ? 1 : a.company === "Familia" ? 3 : 2;
