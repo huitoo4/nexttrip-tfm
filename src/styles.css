@@ -139,3 +139,8 @@
 @media print {
   .no-print { display: none !important; }
 }
+
+@keyframes nt-spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+.nt-spin { animation: nt-spin 1.4s cubic-bezier(.6,0,.4,1) infinite; transform-style: preserve-3d; }
+@keyframes nt-drop { from { transform: translateY(-40px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.nt-drop { animation: nt-drop .35s ease-out; }
