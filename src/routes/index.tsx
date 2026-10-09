@@ -12,7 +12,7 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
   useEffect(() => setQ(value), [value]);
-  const results = open ? searchCities(q) : [];
+  const results = open ? searchCities(q, 40) : [];
   const r = resolveOrigin(value);
   const pick = (label: string) => { onChange(label); setQ(label); setOpen(false); };
   return (
@@ -39,7 +39,7 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
         />
       </label>
       {results.length > 0 && (
-        <ul role="listbox" className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+        <ul role="listbox" className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-border bg-card shadow-lg">
           {results.map((c, i) => {
             return (
               <li key={cityLabel(c)} role="option" aria-selected={i === hi}>
@@ -61,8 +61,10 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
           Origen: {r.city.name}, {r.city.country} · el medio de transporte se elegirá según el destino
         </p>
       )}
-      {!r.city && value.trim().length > 2 && (
-        <p className="mt-2 text-[12px] text-muted-foreground">No reconocemos esta ciudad; si hace falta avión calcularemos desde {r.hub.city} ({r.hub.code}).</p>
+      {!r.city && value.trim().length > 0 && !open && (
+        <p role="alert" className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-[12px] font-semibold text-destructive">
+          ⚠ No reconocemos «{value}». Elige de la lista una ciudad más conocida o cercana (o escribe un país para ver sus ciudades).
+        </p>
       )}
     </div>
   );
@@ -102,7 +104,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function Index() {
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>({
-    style: "Cultural", company: "Pareja", pace: "Equilibrado", interests: ["Gastronomía"], origin: "Madrid", budget: 2400,
+    style: "Cultural", company: "Pareja", pace: "Equilibrado", interests: ["Gastronomía"], origin: "", budget: 2400,
   });
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
@@ -127,9 +129,13 @@ function Index() {
 
   const [loading, setLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [fading, setFading] = useState(false);
+  const originOk = !!resolveOrigin(a.origin).city;
   const submit = async () => {
     if (loading) return;
-    setLoading(true); setAiError(null);
+    if (!originOk) { flash("⚠ Elige primero una ciudad de origen reconocida"); onboardRef.current?.scrollIntoView({ behavior: "smooth" }); return; }
+    setLoading(true); setAiError(null); setScore(0); setFading(false);
     try {
       const res = await suggestTrips({ data: a });
       if (!res.ok) setAiError(res.error);
@@ -138,8 +144,12 @@ function Index() {
       setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
       setTrips([]);
     } finally {
-      setLoading(false);
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      setFading(true);
+      setTimeout(() => {
+        setLoading(false); setFading(false);
+        setScore((sc) => { flash(`🧳 Minijuego: ${sc} objetos empaquetados`); return sc; });
+        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      }, 450);
     }
   };
 
@@ -207,19 +217,6 @@ function Index() {
           <div className="glass animate-rise rounded-[28px] p-6" style={{ animationDelay: "120ms" }}>
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
               <span className="size-2 rounded-full bg-accent" />origen del viaje
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {["Madrid", "Barcelona", "Bilbao", "Sevilla"].map((o) => (
-                <button
-                  key={o}
-                  onClick={() => setA({ ...a, origin: o })}
-                  className={`rounded-full px-4 py-2 text-[13px] transition-colors ${
-                    a.origin === o ? "border border-primary/20 bg-primary/10 font-bold text-primary" : "glass-soft font-semibold text-foreground/55 hover:text-foreground"
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
             </div>
             <OriginInput value={a.origin} onChange={(origin) => setA({ ...a, origin })} />
             <div className="mt-4 rounded-2xl bg-card/60 p-4">
@@ -366,7 +363,7 @@ function Index() {
               {trips.map((t, i) => (
                 <article key={t.id} className={`glass animate-rise overflow-hidden rounded-[26px] ${i === 0 ? "ring-1 ring-accent/40" : ""}`} style={{ animationDelay: `${i * 110}ms` }}>
                   <div className="relative">
-                    <img src={t.img} alt={t.name} loading="lazy" width={944} height={704} className="h-48 w-full object-cover" />
+                    <DestPhoto trip={t} className="h-48 w-full object-cover" />
                     <span className="glass-soft absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-bold">{t.match}% afinidad</span>
                   </div>
                   <div className="p-5">
@@ -394,13 +391,13 @@ function Index() {
                     <ul className="mt-4 space-y-1 text-[12px] text-foreground/70">
                       {t.plan.map((p) => <li key={p}>— {p}</li>)}
                     </ul>
-                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
-                      <span className="font-display text-xl font-extrabold">{eur(t.total)}</span>
-                      <div className="no-print flex gap-2">
-                        <button onClick={() => save(t)} className="glass-soft rounded-full px-4 py-1.5 text-[11px] font-bold text-foreground/70">
+                    <div className="mt-4 border-t border-border pt-3">
+                      <p className="text-center font-display text-2xl font-extrabold">{eur(t.total)}</p>
+                      <div className="no-print mt-3 grid grid-cols-2 gap-2">
+                        <button onClick={() => save(t)} className="glass-soft rounded-full px-3 py-2 text-[12px] font-bold text-foreground/70">
                           {saved.includes(t.id) ? "Guardado ✓" : "Guardar"}
                         </button>
-                        <button onClick={() => setExporting({ trip: t, answers: a })} className="rounded-full bg-primary px-4 py-1.5 text-[11px] font-bold text-primary-foreground">
+                        <button onClick={() => setExporting({ trip: t, answers: a })} className="rounded-full bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground">
                           Exportar
                         </button>
                       </div>
@@ -412,6 +409,8 @@ function Index() {
           </section>
         )}
       </div>
+
+      {loading && <LoadingScreen fading={fading} score={score} onScore={setScore} />}
 
       {showSaved && (
         <SavedPanel
@@ -569,7 +568,7 @@ function SavedPanel({ trips, onClose, onRemove, onExport }: { trips: SavedTrip[]
         <ul className="space-y-3">
           {trips.map((t) => (
             <li key={t.id} className="flex gap-3 rounded-2xl border border-border p-3">
-              <img src={t.img} alt={t.name} className="size-16 rounded-xl object-cover" />
+              <DestPhoto trip={t} className="size-16 rounded-xl object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold">{t.name}</p>
                 <p className="text-[12px] text-muted-foreground">{t.days} días · desde {t.answers.origin} · {eur(t.total)}</p>
@@ -601,6 +600,100 @@ function Row({ dot, label, value }: { dot: string; label: string; value: number 
       <span className={`size-1.5 rounded-full ${dot}`} />
       <span className="flex-1 text-muted-foreground">{label}</span>
       <span className="font-bold">{eur(value)}</span>
+    </div>
+  );
+}
+
+const PHOTO_CACHE = new Map<string, string | null>();
+async function wikiPhoto(title: string): Promise<string | null> {
+  for (const lang of ["es", "en"]) {
+    try {
+      const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      const src = j.originalimage?.source ?? j.thumbnail?.source;
+      if (src && !/\.svg/i.test(src)) return j.thumbnail?.source?.replace(/\/\d+px-/, "/960px-") ?? src;
+    } catch { /* ignore */ }
+  }
+  return null;
+}
+
+function DestPhoto({ trip, className }: { trip: Trip; className?: string }) {
+  const [src, setSrc] = useState<string>(trip.img);
+  useEffect(() => {
+    let alive = true;
+    const key = trip.name;
+    const run = async () => {
+      if (!PHOTO_CACHE.has(key)) {
+        const first = trip.name.split(/[,(]| y /)[0]!.trim();
+        PHOTO_CACHE.set(key, (await wikiPhoto(trip.name)) ?? (first !== trip.name ? await wikiPhoto(first) : null) ?? (await wikiPhoto(trip.region)));
+      }
+      const u = PHOTO_CACHE.get(key);
+      if (alive && u) setSrc(u);
+    };
+    run();
+    return () => { alive = false; };
+  }, [trip.name, trip.region]);
+  return <img src={src} alt={trip.name} loading="lazy" width={944} height={704} className={className} onError={() => setSrc(trip.img)} />;
+}
+
+const MORPH = ["✈️", "🧳", "🦆", "🌲"];
+const GOOD = ["🛂 Pasaporte", "🪥 Cepillo de dientes", "🕶️ Gafas de sol", "🧴 Protector solar", "📷 Cámara", "🧦 Calcetines"];
+const BAD = ["🍍 Una piña", "🍞 Una tostadora", "⚓ Un ancla de barco", "🌵 Un cactus gigante", "🪑 Una silla de oficina"];
+
+function LoadingScreen({ fading, score, onScore }: { fading: boolean; score: number; onScore: (fn: (n: number) => number) => void }) {
+  const [m, setM] = useState(0);
+  const [item, setItem] = useState<{ label: string; good: boolean; k: number } | null>(null);
+  const [fb, setFb] = useState<string | null>(null);
+  const next = () => {
+    const good = Math.random() < 0.55;
+    const list = good ? GOOD : BAD;
+    setItem({ label: list[Math.floor(Math.random() * list.length)]!, good, k: Date.now() });
+  };
+  useEffect(() => { const t = setInterval(() => setM((x) => (x + 1) % MORPH.length), 1400); return () => clearInterval(t); }, []);
+  useEffect(() => { next(); }, []);
+  useEffect(() => {
+    if (!item) return;
+    const t = setTimeout(() => { setFb("¡Demasiado lento!"); next(); }, 2600);
+    return () => clearTimeout(t);
+  }, [item]);
+  const answer = (pack: boolean) => {
+    if (!item) return;
+    const ok = pack === item.good;
+    if (ok && pack) onScore((n) => n + 1);
+    setFb(ok ? (pack ? "¡Bien empaquetado! ✓" : "¡Fuera! ✓") : pack ? "¡Eso no cabe en la maleta! ✗" : "¡Lo necesitabas! ✗");
+    next();
+  };
+  return (
+    <div className={`no-print fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm transition-opacity duration-400 ${fading ? "opacity-0" : "opacity-100 animate-rise"}`}>
+      <div className="w-full max-w-md rounded-[28px] bg-card p-7 text-center shadow-2xl">
+        <div className="mx-auto grid size-24 place-items-center rounded-full bg-primary/10" style={{ perspective: 400 }}>
+          <span key={m} className="nt-spin text-5xl">{MORPH[m]}</span>
+        </div>
+        <p className="mt-4 font-display text-xl font-semibold">Buscando tus viajes…</p>
+        <p className="text-[12px] text-muted-foreground">La IA tarda unos 20-30 segundos. Mientras tanto, juega:</p>
+        <div className="mt-5 rounded-2xl bg-muted/60 p-5">
+          <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-primary">¿Qué meterías en tu maleta?</p>
+          <div className="relative mx-auto mt-4 h-28 w-48">
+            <div className="absolute inset-x-0 bottom-0 h-14 rounded-b-2xl rounded-t-md border-2 border-dashed border-foreground/30 bg-card/70" />
+            <div className="absolute inset-x-4 bottom-14 h-3 rounded-t-lg border-2 border-b-0 border-foreground/30" />
+            {item && (
+              <div
+                key={item.k}
+                className="nt-drop absolute inset-x-0 top-0 mx-auto w-fit rounded-full bg-card px-4 py-2 text-[14px] font-bold shadow-md"
+              >
+                {item.label}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => answer(true)} className="rounded-full bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-foreground">¡A la maleta!</button>
+            <button type="button" onClick={() => answer(false)} className="glass-soft rounded-full px-3 py-2.5 text-[13px] font-bold text-destructive">¡Descártalo!</button>
+          </div>
+          <p className="mt-3 h-4 text-[12px] font-semibold text-muted-foreground">{fb}</p>
+          <p className="mt-1 font-mono text-[14px] font-bold">Puntuación: {score} objetos empaquetados</p>
+        </div>
+      </div>
     </div>
   );
 }

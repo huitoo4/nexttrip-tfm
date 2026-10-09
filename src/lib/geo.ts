@@ -101,6 +101,8 @@ export const cityLabel = (c: City) => `${c.name}, ${c.country}`;
 export function searchCities(q: string, limit = 6): City[] {
   const n = norm(q.split(",")[0] ?? "");
   if (!n) return [];
+  const inCountry = CITIES.filter((c) => norm(c.country) === n);
+  if (inCountry.length) return inCountry;
   const starts = CITIES.filter((c) => norm(c.name).startsWith(n));
   const contains = CITIES.filter((c) => !starts.includes(c) && (norm(c.name).includes(n) || norm(c.country).startsWith(n)));
   return [...starts, ...contains].slice(0, limit);
