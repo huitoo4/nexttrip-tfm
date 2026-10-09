@@ -129,7 +129,7 @@ export function recommend(a: Answers): Trip[] {
     // mínimo realista: vuelo low-cost ida y vuelta + 3 noches muy básicas por persona
     const minFlight = 70 + dist * 1100;
     const minStay = Math.max(90, (d.base * 3) / 7 * 0.6);
-    const minCost = r10((minFlight + minStay) * (people > 1 ? 0.9 : 1));
+    const minCost = r10(minFlight / 0.6 + minStay);
     const interestHits = d.tags.filter((t) => a.interests.includes(t)).length;
     const styleHit = d.styles.includes(a.style) ? 1 : 0;
     const fit = cost <= a.budget
