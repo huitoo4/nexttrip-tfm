@@ -106,7 +106,7 @@ export function searchCities(q: string, limit = 6): City[] {
   return [...starts, ...contains].slice(0, limit);
 }
 
-function km(aLat: number, aLon: number, bLat: number, bLon: number) {
+export function km(aLat: number, aLon: number, bLat: number, bLon: number) {
   const R = 6371, r = Math.PI / 180;
   const dLat = (bLat - aLat) * r, dLon = (bLon - aLon) * r;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * r) * Math.cos(bLat * r) * Math.sin(dLon / 2) ** 2;
