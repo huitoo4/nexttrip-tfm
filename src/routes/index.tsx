@@ -568,7 +568,7 @@ function SavedPanel({ trips, onClose, onRemove, onExport }: { trips: SavedTrip[]
         <ul className="space-y-3">
           {trips.map((t) => (
             <li key={t.id} className="flex gap-3 rounded-2xl border border-border p-3">
-              <img src={t.img} alt={t.name} className="size-16 rounded-xl object-cover" />
+              <DestPhoto trip={t} className="size-16 rounded-xl object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-bold">{t.name}</p>
                 <p className="text-[12px] text-muted-foreground">{t.days} días · desde {t.answers.origin} · {eur(t.total)}</p>
@@ -680,9 +680,7 @@ function LoadingScreen({ fading, score, onScore }: { fading: boolean; score: num
             {item && (
               <div
                 key={item.k}
-                draggable
-                onDragEnd={(e) => answer(e.clientY > (e.currentTarget.getBoundingClientRect().top))}
-                className="nt-drop absolute inset-x-0 top-0 mx-auto w-fit cursor-grab rounded-full bg-card px-4 py-2 text-[14px] font-bold shadow-md"
+                className="nt-drop absolute inset-x-0 top-0 mx-auto w-fit rounded-full bg-card px-4 py-2 text-[14px] font-bold shadow-md"
               >
                 {item.label}
               </div>
