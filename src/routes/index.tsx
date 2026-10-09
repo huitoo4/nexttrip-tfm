@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   STYLES, COMPANY, PACES, INTERESTS,
-  recommend, tierFor, eur, itineraryText, breakdown, type Answers, type Trip, type CostItem,
+  finalizeTrips, tierFor, eur, itineraryText, breakdown, MODE_LABEL, type Answers, type Trip, type CostItem,
 } from "@/lib/trips";
+import { suggestTrips } from "@/lib/ai.functions";
 import { searchCities, resolveOrigin, cityLabel } from "@/lib/geo";
 
 function OriginInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -40,7 +41,6 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
       {results.length > 0 && (
         <ul role="listbox" className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
           {results.map((c, i) => {
-            const h = resolveOrigin(cityLabel(c));
             return (
               <li key={cityLabel(c)} role="option" aria-selected={i === hi}>
                 <button
@@ -50,7 +50,6 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
                   className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-[13px] ${i === hi ? "bg-primary/10" : ""}`}
                 >
                   <span><span className="font-bold">{c.name}</span> <span className="text-muted-foreground">· {c.country}</span></span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">✈ {h.hub.code}</span>
                 </button>
               </li>
             );
@@ -59,13 +58,11 @@ function OriginInput({ value, onChange }: { value: string; onChange: (v: string)
       )}
       {r.city && (
         <p className="mt-2 rounded-xl bg-accent/10 px-3 py-2 text-[12px] font-semibold text-foreground/75">
-          {r.rerouted
-            ? <>Origen: {r.city.name} · Salida recomendada desde aeropuerto de {r.hub.city} ({r.hub.code}, a {r.km} km)</>
-            : <>Salida desde {r.hub.name} ({r.hub.code})</>}
+          Origen: {r.city.name}, {r.city.country} · el medio de transporte se elegirá según el destino
         </p>
       )}
       {!r.city && value.trim().length > 2 && (
-        <p className="mt-2 text-[12px] text-muted-foreground">No reconocemos esta ciudad; calcularemos desde {r.hub.city} ({r.hub.code}).</p>
+        <p className="mt-2 text-[12px] text-muted-foreground">No reconocemos esta ciudad; si hace falta avión calcularemos desde {r.hub.city} ({r.hub.code}).</p>
       )}
     </div>
   );
@@ -128,9 +125,22 @@ function Index() {
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(null), 2400); };
 
-  const submit = () => {
-    setTrips(recommend(a));
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  const [loading, setLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const submit = async () => {
+    if (loading) return;
+    setLoading(true); setAiError(null);
+    try {
+      const res = await suggestTrips({ data: a });
+      if (!res.ok) setAiError(res.error);
+      setTrips(finalizeTrips(res.trips, a));
+    } catch {
+      setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
+      setTrips([]);
+    } finally {
+      setLoading(false);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
   };
 
   const persist = (list: SavedTrip[]) => {
@@ -184,7 +194,7 @@ function Index() {
               Tu próximo viaje, <span className="italic text-primary">hecho a medida</span>.
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-              Cuéntanos cómo viajas y tu presupuesto. Te devolvemos tres itinerarios con desglose real de costes, sin letra pequeña.
+              Cuéntanos cómo viajas y tu presupuesto. Nuestra IA busca entre cualquier destino del mundo y te devuelve hasta tres itinerarios con desglose real de costes, sin letra pequeña.
             </p>
             <button
               onClick={() => onboardRef.current?.scrollIntoView({ behavior: "smooth" })}
@@ -321,8 +331,8 @@ function Index() {
                 Siguiente
               </button>
             ) : (
-              <button onClick={submit} className="rounded-full bg-accent px-7 py-3 text-[14px] font-bold text-accent-foreground shadow-brand">
-                Ver mis 3 viajes
+              <button onClick={submit} disabled={loading} className="rounded-full bg-accent px-7 py-3 text-[14px] font-bold text-accent-foreground shadow-brand disabled:opacity-60">
+                {loading ? "Buscando destinos…" : "Ver viajes recomendados"}
               </button>
             )}
           </div>
@@ -336,7 +346,7 @@ function Index() {
                 <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   {trips.length === 0 ? "Sin viajes realistas" : trips.length === 1 ? "1 itinerario para ti" : `${trips.length} itinerarios para ti`}
                 </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} (✈ {resolveOrigin(a.origin).hub.code}) · {a.style} · {a.company} · {a.pace}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace}</p>
               </div>
               {trips.length > 0 && (
                 <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
@@ -344,7 +354,8 @@ function Index() {
                 </button>
               )}
             </div>
-            {trips.length < 3 && (
+            {aiError && <div className="glass-soft mt-5 rounded-2xl p-5 text-[14px] font-semibold text-destructive">{aiError}</div>}
+            {!aiError && trips.length < 3 && (
               <div className="glass-soft mt-5 rounded-2xl p-5 text-[14px]">
                 {trips.length === 0
                   ? `No hay ningún viaje realista desde ${a.origin} con ${a.budget}€. Prueba a subir el presupuesto o a salir desde otra ciudad.`
@@ -366,6 +377,9 @@ function Index() {
                       </span>
                     </div>
                     <p className="mt-1 text-[12px] text-muted-foreground">{t.days} días · {t.region} · {t.tagline}</p>
+                    <p className="mt-2 rounded-xl bg-primary/8 px-3 py-1.5 text-[11.5px] font-semibold text-foreground/75">
+                      {MODE_LABEL[t.mode]} · {t.mode === "avion" ? `Salida recomendada desde ${t.departFrom}` : `Desde ${t.departFrom}`} · {t.distanceKm.toLocaleString("es-ES")} km
+                    </p>
 
                     <div className="mt-4 flex h-2 overflow-hidden rounded-full">
                       <span className="bg-primary" style={{ width: `${(t.transport / t.total) * 100}%` }} />
@@ -507,7 +521,7 @@ function ExportDialog({ trip, answers, onClose, onDone }: { trip: Trip; answers:
           </div>
           <div className="mt-4 flex items-end justify-between gap-4">
             <div>
-              <p className="font-mono text-3xl font-bold">{hub.code}</p>
+              <p className="font-mono text-3xl font-bold">{trip.departCode ?? hub.code}</p>
               <p className="text-[11px] opacity-80">{answers.origin.split(",")[0]}</p>
             </div>
             <span className="pb-3 font-mono text-sm opacity-70">— ✈ —</span>
