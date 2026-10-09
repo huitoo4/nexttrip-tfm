@@ -333,13 +333,24 @@ function Index() {
           <section ref={resultsRef} className="scroll-mt-8">
             <div className="mt-14 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">3 itinerarios para ti</h2>
+                <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  {trips.length === 0 ? "Sin viajes realistas" : trips.length === 1 ? "1 itinerario para ti" : `${trips.length} itinerarios para ti`}
+                </h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} (✈ {resolveOrigin(a.origin).hub.code}) · {a.style} · {a.company} · {a.pace}</p>
               </div>
-              <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
-                Imprimir / PDF
-              </button>
+              {trips.length > 0 && (
+                <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
+                  Imprimir / PDF
+                </button>
+              )}
             </div>
+            {trips.length < 3 && (
+              <div className="glass-soft mt-5 rounded-2xl p-5 text-[14px]">
+                {trips.length === 0
+                  ? `No hay ningún viaje realista desde ${a.origin} con ${a.budget}€. Prueba a subir el presupuesto o a salir desde otra ciudad.`
+                  : `Con ${a.budget}€ desde ${a.origin} solo encontramos ${trips.length === 1 ? "esta opción realista" : "estas opciones realistas"}. Sube el presupuesto para ver más.`}
+              </div>
+            )}
             <div className="mt-5 grid gap-6 md:grid-cols-3">
               {trips.map((t, i) => (
                 <article key={t.id} className={`glass animate-rise overflow-hidden rounded-[26px] ${i === 0 ? "ring-1 ring-accent/40" : ""}`} style={{ animationDelay: `${i * 110}ms` }}>

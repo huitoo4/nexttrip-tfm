@@ -126,6 +126,10 @@ export function recommend(a: Answers): Trip[] {
     const dist = distance(oz, d.zone);
     // coste real estimado: base + vuelo según distancia
     const cost = d.base + dist * 1400;
+    // mínimo realista: vuelo low-cost ida y vuelta + 3 noches muy básicas por persona
+    const minFlight = 70 + dist * 1100;
+    const minStay = Math.max(90, (d.base * 3) / 7 * 0.6);
+    const minCost = r10((minFlight + minStay) * (people > 1 ? 0.9 : 1));
     const interestHits = d.tags.filter((t) => a.interests.includes(t)).length;
     const styleHit = d.styles.includes(a.style) ? 1 : 0;
     const fit = cost <= a.budget
@@ -133,16 +137,16 @@ export function recommend(a: Answers): Trip[] {
       : -((cost - a.budget) / a.budget) * 3; // fuera de presupuesto penaliza fuerte
     const luxBonus = tier === "lux" && d.base >= 2500 ? 1 : tier === "low" && d.base <= 700 ? 0.8 : 0;
     const score = interestHits * 1.2 + styleHit * 1.5 + fit * 3 + luxBonus;
-    return { d, score, dist, cost };
-  }).sort((x, y) => y.score - x.score);
+    return { d, score, dist, cost, minCost, minFlight };
+  }).filter((x) => x.minCost <= a.budget).sort((x, y) => y.score - x.score);
 
-  return scored.slice(0, 3).map(({ d, score, dist, cost }) => {
-    const target = Math.min(a.budget, Math.max(Math.min(cost, a.budget) * 0.85, a.budget * 0.9));
+  return scored.slice(0, 3).map(({ d, score, dist, cost, minCost, minFlight }) => {
+    const target = Math.max(minCost, Math.min(a.budget, Math.max(Math.min(cost, a.budget) * 0.85, a.budget * 0.9)));
     let tShare = 0.18 + dist * 0.32;
     if (a.pace === "Intenso") tShare += 0.03;
     const aShare = a.pace === "Intenso" ? 0.25 : a.pace === "Tranquilo" ? 0.15 : 0.2;
-    const transport = r10(target * tShare);
-    const activities = r10(target * aShare);
+    const transport = Math.max(r10(target * tShare), r10(minFlight / 0.6));
+    const activities = r10(Math.max(0, target - transport) * aShare);
     const stay = r10(target - transport - activities);
     const days = Math.max(3, Math.min(14, Math.round(((target - transport) / ((d.base * 0.8) / 7)) * (people > 1 ? 0.85 : 1))));
     return {
