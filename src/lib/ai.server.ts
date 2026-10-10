@@ -38,6 +38,7 @@ export async function generateSuggestions(a: Answers): Promise<AiSuggestion[]> {
 
 Origen: ${originTxt}
 Estilo: ${a.style}. Viajan: ${a.company} (${people} persona/s). Ritmo: ${a.pace}. Intereses: ${a.interests.join(", ") || "sin preferencia"}.
+Duración: ${a.days ? `EXACTAMENTE ${a.days} días para todos los destinos (ajusta los precios de estancia y actividades a esa duración)` : "la que mejor encaje con el presupuesto (1-21 días)"}.
 Presupuesto TOTAL para todo el grupo, todo incluido: ${a.budget} EUR.
 
 Reglas:
@@ -45,7 +46,7 @@ Reglas:
 - Ten en cuenta la distancia: con presupuestos bajos prioriza destinos cercanos accesibles en autobús o tren; para viajes largos indica needsFlight=true (también si hay mar de por medio).
 - Precios realistas de 2026 en EUR para todo el grupo: transport (ida y vuelta + transporte local), stay (alojamiento + comidas), activities. La suma debe ser <= ${a.budget}. Aprovecha bien el presupuesto (idealmente 75-100%).
 - Si el presupuesto no da para un viaje realista, devuelve menos destinos o una lista vacía. No inventes precios imposibles (ej. un vuelo internacional por 20€).
-- days: duración razonable para el presupuesto (1-21). plan: 3 actividades concretas y reales. tagline: máx 8 palabras. match: 50-99. lat/lon reales del destino.
+- days: ${a.days ? `siempre ${a.days}` : "duración razonable para el presupuesto (1-21)"}. plan: 3 actividades concretas y reales. tagline: máx 8 palabras. match: 50-99. lat/lon reales del destino.
 - scene: la imagen que mejor lo representa entre ${SCENES.join(", ")}.
 - Varía: no repitas siempre los destinos típicos; incluye alguna joya menos conocida si encaja.
 - Todo el texto en español.`;

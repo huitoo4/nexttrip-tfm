@@ -75,7 +75,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "NextTrip — Viajes personalizados según tu presupuesto" },
-      { name: "description", content: "Responde 4 preguntas, elige tu presupuesto y recibe 3 itinerarios con desglose de transporte, estancia y actividades." },
+      { name: "description", content: "Responde 5 preguntas, elige tu presupuesto y tus días, y recibe hasta 3 itinerarios con desglose de transporte, estancia y actividades." },
       { property: "og:title", content: "NextTrip — Viajes personalizados según tu presupuesto" },
       { property: "og:description", content: "Tres itinerarios a tu medida con desglose real de costes." },
       { property: "og:type", content: "website" },
@@ -85,7 +85,8 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const STEPS = ["Estilo", "Compañía", "Ritmo", "Intereses", "Presupuesto"] as const;
+const STEPS = ["Estilo", "Compañía", "Ritmo", "Intereses", "Presupuesto", "Días"] as const;
+const DAY_OPTIONS = [3, 5, 7, 10, 14];
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -106,6 +107,7 @@ function Index() {
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>({
     style: "Cultural", company: "Pareja", pace: "Equilibrado", interests: ["Gastronomía"], origin: "", budget: 2400,
+    days: undefined,
   });
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
@@ -303,6 +305,23 @@ function Index() {
                 </div>
               </div>
             )}
+            {step === 5 && (
+              <Question title="¿Cuántos días quieres estar?">
+                <div className="flex flex-wrap items-center gap-2">
+                  {DAY_OPTIONS.map((d) => (
+                    <Chip key={d} active={a.days === d} onClick={() => setA({ ...a, days: d })}>
+                      {d} días
+                    </Chip>
+                  ))}
+                  <Chip active={a.days === undefined} onClick={() => setA({ ...a, days: undefined })}>
+                    Lo decide la IA
+                  </Chip>
+                </div>
+                <p className="mt-4 text-[12.5px] text-muted-foreground">
+                  Pregunta opcional: si la dejas sin responder, la IA elige la duración que mejor encaje con tu presupuesto.
+                </p>
+              </Question>
+            )}
           </div>
 
           <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
@@ -333,7 +352,7 @@ function Index() {
                 <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   {trips.length === 0 ? "Sin viajes realistas" : trips.length === 1 ? "1 itinerario para ti" : `${trips.length} itinerarios para ti`}
                 </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace} · {a.days ? `${a.days} días` : "duración flexible"}</p>
               </div>
               {trips.length > 0 && (
                 <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
