@@ -5,6 +5,7 @@ import {
   finalizeTrips, tierFor, eur, itineraryText, breakdown, MODE_LABEL, type Answers, type Trip, type CostItem,
 } from "@/lib/trips";
 import { suggestTrips } from "@/lib/ai.functions";
+import { LoadingScreen } from "@/components/loading-screen";
 import { searchCities, resolveOrigin, cityLabel } from "@/lib/geo";
 
 function OriginInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -176,15 +177,7 @@ function Index() {
 
       <div className="mx-auto max-w-6xl px-6 pt-8 pb-20">
         <header className="no-print flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-brand font-display">
-              <span className="text-xl font-semibold">n</span>
-            </div>
-            <div>
-              <p className="text-[17px] font-extrabold tracking-tight">NextTrip</p>
-              <p className="text-[11px] font-medium text-muted-foreground">viajes a tu medida</p>
-            </div>
-          </div>
+          <p aria-label="NextTrip" className="font-ticket text-[32px] font-bold leading-none tracking-normal">Next<span className="text-primary">Trip</span></p>
           <button
             type="button"
             onClick={() => setShowSaved(true)}
@@ -197,11 +190,8 @@ function Index() {
         {/* Hero + origen */}
         <section className="no-print mt-16 grid items-center gap-10 md:mt-20 md:grid-cols-[1.15fr_.85fr]">
           <div className="animate-rise">
-            <div className="inline-flex items-center gap-2 rounded-full bg-card/70 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-              <span className="size-1.5 rounded-full bg-primary" />onboarding guiado
-            </div>
-            <h1 className="mt-5 font-display text-5xl font-semibold leading-[1.02] tracking-tight md:text-[64px]">
-              Tu próximo viaje, <span className="italic text-primary">hecho a medida</span>.
+            <h1 className="font-display text-5xl font-semibold leading-[1.08] tracking-normal md:text-[64px]">
+              Diseña tu próximo <span className="italic text-primary">v<span className="not-italic font-ticket">IA</span>je</span>
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Cuéntanos cómo viajas y tu presupuesto. Nuestra IA busca entre cualquier destino del mundo y te devuelve hasta tres itinerarios con desglose real de costes, sin letra pequeña.
@@ -637,63 +627,3 @@ function DestPhoto({ trip, className }: { trip: Trip; className?: string }) {
   return <img src={src} alt={trip.name} loading="lazy" width={944} height={704} className={className} onError={() => setSrc(trip.img)} />;
 }
 
-const MORPH = ["✈️", "🧳", "🦆", "🌲"];
-const GOOD = ["🛂 Pasaporte", "🪥 Cepillo de dientes", "🕶️ Gafas de sol", "🧴 Protector solar", "📷 Cámara", "🧦 Calcetines"];
-const BAD = ["🍍 Una piña", "🍞 Una tostadora", "⚓ Un ancla de barco", "🌵 Un cactus gigante", "🪑 Una silla de oficina"];
-
-function LoadingScreen({ fading, score, onScore }: { fading: boolean; score: number; onScore: (fn: (n: number) => number) => void }) {
-  const [m, setM] = useState(0);
-  const [item, setItem] = useState<{ label: string; good: boolean; k: number } | null>(null);
-  const [fb, setFb] = useState<string | null>(null);
-  const next = () => {
-    const good = Math.random() < 0.55;
-    const list = good ? GOOD : BAD;
-    setItem({ label: list[Math.floor(Math.random() * list.length)]!, good, k: Date.now() });
-  };
-  useEffect(() => { const t = setInterval(() => setM((x) => (x + 1) % MORPH.length), 1400); return () => clearInterval(t); }, []);
-  useEffect(() => { next(); }, []);
-  useEffect(() => {
-    if (!item) return;
-    const t = setTimeout(() => { setFb("¡Demasiado lento!"); next(); }, 2600);
-    return () => clearTimeout(t);
-  }, [item]);
-  const answer = (pack: boolean) => {
-    if (!item) return;
-    const ok = pack === item.good;
-    if (ok && pack) onScore((n) => n + 1);
-    setFb(ok ? (pack ? "¡Bien empaquetado! ✓" : "¡Fuera! ✓") : pack ? "¡Eso no cabe en la maleta! ✗" : "¡Lo necesitabas! ✗");
-    next();
-  };
-  return (
-    <div className={`no-print fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm transition-opacity duration-400 ${fading ? "opacity-0" : "opacity-100 animate-rise"}`}>
-      <div className="w-full max-w-md rounded-[28px] bg-card p-7 text-center shadow-2xl">
-        <div className="mx-auto grid size-24 place-items-center rounded-full bg-primary/10" style={{ perspective: 400 }}>
-          <span key={m} className="nt-spin text-5xl">{MORPH[m]}</span>
-        </div>
-        <p className="mt-4 font-display text-xl font-semibold">Buscando tus viajes…</p>
-        <p className="text-[12px] text-muted-foreground">La IA tarda unos 20-30 segundos. Mientras tanto, juega:</p>
-        <div className="mt-5 rounded-2xl bg-muted/60 p-5">
-          <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-primary">¿Qué meterías en tu maleta?</p>
-          <div className="relative mx-auto mt-4 h-28 w-48">
-            <div className="absolute inset-x-0 bottom-0 h-14 rounded-b-2xl rounded-t-md border-2 border-dashed border-foreground/30 bg-card/70" />
-            <div className="absolute inset-x-4 bottom-14 h-3 rounded-t-lg border-2 border-b-0 border-foreground/30" />
-            {item && (
-              <div
-                key={item.k}
-                className="nt-drop absolute inset-x-0 top-0 mx-auto w-fit rounded-full bg-card px-4 py-2 text-[14px] font-bold shadow-md"
-              >
-                {item.label}
-              </div>
-            )}
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => answer(true)} className="rounded-full bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-foreground">¡A la maleta!</button>
-            <button type="button" onClick={() => answer(false)} className="glass-soft rounded-full px-3 py-2.5 text-[13px] font-bold text-destructive">¡Descártalo!</button>
-          </div>
-          <p className="mt-3 h-4 text-[12px] font-semibold text-muted-foreground">{fb}</p>
-          <p className="mt-1 font-mono text-[14px] font-bold">Puntuación: {score} objetos empaquetados</p>
-        </div>
-      </div>
-    </div>
-  );
-}
