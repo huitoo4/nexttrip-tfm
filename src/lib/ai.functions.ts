@@ -8,6 +8,7 @@ const input = z.object({
   interests: z.array(z.string().max(40)).max(12),
   origin: z.string().max(120),
   budget: z.number().min(100).max(10000),
+  days: z.number().int().min(1).max(30).optional(),
 });
 
 export const suggestTrips = createServerFn({ method: "POST" })

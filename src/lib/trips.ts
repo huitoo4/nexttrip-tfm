@@ -106,7 +106,7 @@ export function finalizeTrips(raw: AiSuggestion[], a: Answers): Trip[] {
     const originLabel = o.city?.name ?? a.origin;
     out.push({
       id, name: s.name, region: s.region || s.country, img: SCENE_IMG[s.scene] ?? lisboa, tagline: s.tagline,
-      days: Math.max(1, Math.min(30, Math.round(s.days))), transport, stay, activities, total,
+      days, transport, stay, activities, total,
       tier: tierFor(total), plan: s.plan.slice(0, 4), match: Math.max(50, Math.min(99, Math.round(s.match))),
       mode, distanceKm: dist,
       departFrom: mode === "avion" ? `aeropuerto de ${o.hub.city} (${o.hub.code})` : originLabel,

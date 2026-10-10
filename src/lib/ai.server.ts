@@ -38,6 +38,7 @@ export async function generateSuggestions(a: Answers): Promise<AiSuggestion[]> {
 
 Origen: ${originTxt}
 Estilo: ${a.style}. Viajan: ${a.company} (${people} persona/s). Ritmo: ${a.pace}. Intereses: ${a.interests.join(", ") || "sin preferencia"}.
+Duración: ${a.days ? `EXACTAMENTE ${a.days} días para todos los destinos (ajusta los precios de estancia y actividades a esa duración)` : "la que mejor encaje con el presupuesto (1-21 días)"}.
 Presupuesto TOTAL para todo el grupo, todo incluido: ${a.budget} EUR.
 
 Reglas:
