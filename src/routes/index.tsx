@@ -352,7 +352,7 @@ function Index() {
                 <h2 className="text-[13px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                   {trips.length === 0 ? "Sin viajes realistas" : trips.length === 1 ? "1 itinerario para ti" : `${trips.length} itinerarios para ti`}
                 </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace}</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Desde {a.origin} · {a.style} · {a.company} · {a.pace} · {a.days ? `${a.days} días` : "duración flexible"}</p>
               </div>
               {trips.length > 0 && (
                 <button onClick={() => window.print()} className="no-print glass-soft rounded-full px-5 py-2 text-[13px] font-bold text-primary">
