@@ -75,7 +75,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "NextTrip — Viajes personalizados según tu presupuesto" },
-      { name: "description", content: "Responde 4 preguntas, elige tu presupuesto y recibe 3 itinerarios con desglose de transporte, estancia y actividades." },
+      { name: "description", content: "Responde 5 preguntas, elige tu presupuesto y tus días, y recibe hasta 3 itinerarios con desglose de transporte, estancia y actividades." },
       { property: "og:title", content: "NextTrip — Viajes personalizados según tu presupuesto" },
       { property: "og:description", content: "Tres itinerarios a tu medida con desglose real de costes." },
       { property: "og:type", content: "website" },
@@ -304,6 +304,23 @@ function Index() {
                 </div>
                 </div>
               </div>
+            )}
+            {step === 5 && (
+              <Question title="¿Cuántos días quieres estar?">
+                <div className="flex flex-wrap items-center gap-2">
+                  {DAY_OPTIONS.map((d) => (
+                    <Chip key={d} active={a.days === d} onClick={() => setA({ ...a, days: d })}>
+                      {d} días
+                    </Chip>
+                  ))}
+                  <Chip active={a.days === undefined} onClick={() => setA({ ...a, days: undefined })}>
+                    Lo decide la IA
+                  </Chip>
+                </div>
+                <p className="mt-4 text-[12.5px] text-muted-foreground">
+                  Pregunta opcional: si la dejas sin responder, la IA elige la duración que mejor encaje con tu presupuesto.
+                </p>
+              </Question>
             )}
           </div>
 
