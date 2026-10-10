@@ -14,6 +14,8 @@ export type Answers = {
   interests: string[];
   origin: string;
   budget: number;
+  /** Duración deseada en días (opcional; si falta, la IA la decide) */
+  days?: number;
 };
 
 export const STYLES = ["Aventura", "Cultural", "Relax", "Gastronómico"];
@@ -91,7 +93,13 @@ export function finalizeTrips(raw: AiSuggestion[], a: Answers): Trip[] {
     const id = nm.replace(/[^a-z0-9]+/g, "-").slice(0, 40);
     if (seen.has(id)) continue;
     const mode: Mode = s.needsFlight || dist > 900 ? "avion" : dist > 300 ? "tren" : "bus";
-    const transport = r10(Math.max(0, s.transport)), stay = r10(Math.max(0, s.stay)), activities = r10(Math.max(0, s.activities));
+    const transport = r10(Math.max(0, s.transport));
+    // Si el viajero fija la duración, ajustamos el precio de la estancia a esas noches
+    const aiDays = Math.max(1, Math.min(30, Math.round(s.days)));
+    const days = a.days ? Math.max(1, Math.min(30, Math.round(a.days))) : aiDays;
+    const nightRatio = days === aiDays ? 1 : Math.max(0.4, (days - 1) / Math.max(1, aiDays - 1));
+    const stay = r10(Math.max(0, s.stay) * nightRatio);
+    const activities = r10(Math.max(0, s.activities));
     const total = transport + stay + activities;
     if (total <= 0 || total > a.budget * 1.05) continue;
     seen.add(id);
