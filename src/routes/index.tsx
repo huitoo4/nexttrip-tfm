@@ -85,7 +85,8 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const STEPS = ["Estilo", "Compañía", "Ritmo", "Intereses", "Presupuesto"] as const;
+const STEPS = ["Estilo", "Compañía", "Ritmo", "Intereses", "Presupuesto", "Días"] as const;
+const DAY_OPTIONS = [3, 5, 7, 10, 14];
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -106,6 +107,7 @@ function Index() {
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>({
     style: "Cultural", company: "Pareja", pace: "Equilibrado", interests: ["Gastronomía"], origin: "", budget: 2400,
+    days: undefined,
   });
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
