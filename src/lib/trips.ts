@@ -15,7 +15,7 @@ export type Answers = {
   origin: string;
   budget: number;
   /** Duración deseada en días (opcional; si falta, la IA la decide) */
-  days?: number;
+  days?: number | undefined;
 };
 
 export const STYLES = ["Aventura", "Cultural", "Relax", "Gastronómico"];
