@@ -138,6 +138,7 @@ function Index() {
     if (loading) return;
     if (!originOk) { flash("⚠ Elige primero una ciudad de origen reconocida"); onboardRef.current?.scrollIntoView({ behavior: "smooth" }); return; }
     setLoading(true); setAiError(null); setFading(false);
+    const started = Date.now();
     try {
       const res = await suggestTrips({ data: a });
       if (!res.ok) setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
@@ -146,11 +147,14 @@ function Index() {
       setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
       setTrips([]);
     } finally {
-      setFading(true);
+      const hold = Math.max(0, 900 - (Date.now() - started));
       setTimeout(() => {
-        setLoading(false); setFading(false);
-        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-      }, 450);
+        setFading(true);
+        setTimeout(() => {
+          setLoading(false); setFading(false);
+          setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+        }, 450);
+      }, hold);
     }
   };
 
