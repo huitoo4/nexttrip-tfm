@@ -132,13 +132,12 @@ function Index() {
 
   const [loading, setLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [score, setScore] = useState(0);
   const [fading, setFading] = useState(false);
   const originOk = !!resolveOrigin(a.origin).city;
   const submit = async () => {
     if (loading) return;
     if (!originOk) { flash("⚠ Elige primero una ciudad de origen reconocida"); onboardRef.current?.scrollIntoView({ behavior: "smooth" }); return; }
-    setLoading(true); setAiError(null); setScore(0); setFading(false);
+    setLoading(true); setAiError(null); setFading(false);
     try {
       const res = await suggestTrips({ data: a });
       if (!res.ok) setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
@@ -150,7 +149,6 @@ function Index() {
       setFading(true);
       setTimeout(() => {
         setLoading(false); setFading(false);
-        setScore((sc) => { flash(`🧳 Minijuego: ${sc} objetos empaquetados`); return sc; });
         setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       }, 450);
     }
@@ -419,7 +417,7 @@ function Index() {
         )}
       </div>
 
-      {loading && <LoadingScreen fading={fading} score={score} onScore={setScore} />}
+      {loading && <LoadingScreen fading={fading} />}
 
       {showSaved && (
         <SavedPanel
