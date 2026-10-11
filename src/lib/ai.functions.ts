@@ -16,13 +16,11 @@ export const suggestTrips = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { generateSuggestions } = await import("./ai.server");
     try {
-      return { ok: true as const, trips: await generateSuggestions(data) };
+      return { ok: true as const, trips: await generateSuggestions(data), fallback: false };
     } catch (e) {
-      const status = (e as { statusCode?: number }).statusCode;
-      const msg = status === 429 ? "Demasiadas solicitudes, inténtalo en un minuto."
-        : status === 402 || status === 403 ? "Se agotaron los créditos de IA del proyecto."
-        : "No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.";
-      console.error("suggestTrips error", e);
-      return { ok: false as const, error: msg, trips: [] };
+      // Modo rescate: si la IA no está disponible (sin clave, sin créditos, etc.) usamos el catálogo local
+      console.error("suggestTrips error, usando modo rescate", e);
+      const { fallbackSuggestions } = await import("./fallback.server");
+      return { ok: true as const, trips: fallbackSuggestions(data), fallback: true };
     }
   });

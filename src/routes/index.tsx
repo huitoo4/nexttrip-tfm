@@ -141,7 +141,7 @@ function Index() {
     setLoading(true); setAiError(null); setScore(0); setFading(false);
     try {
       const res = await suggestTrips({ data: a });
-      if (!res.ok) setAiError(res.error);
+      if (!res.ok) setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
       setTrips(finalizeTrips(res.trips, a));
     } catch {
       setAiError("No se pudieron generar viajes ahora mismo. Inténtalo de nuevo.");
